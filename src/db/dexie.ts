@@ -7,6 +7,7 @@ export interface Folder {
   color: string;
   icon: string;
   order: number;
+  isArchived?: boolean;
   createdAt: string;
 }
 
@@ -70,9 +71,19 @@ export class OfficelistDB extends Dexie {
 
   constructor() {
     super('OfficelistDB');
-
+    
     this.version(1).stores({
       folders: 'id, type, order',
+      persons: 'id, name, isActive',
+      tasks: 'id, folderId, ownerId, status, dueDate, isPriority, updatedAt',
+      taskHistory: 'id, taskId, changedAt',
+      taskDependencies: 'id, taskId, dependsOnId',
+      syncQueue: '++id, timestamp, table'
+    });
+
+    // Verze 2: přidání isArchived pro složky
+    this.version(2).stores({
+      folders: 'id, type, order, isArchived',
       persons: 'id, name, isActive',
       tasks: 'id, folderId, ownerId, status, dueDate, isPriority, updatedAt',
       taskHistory: 'id, taskId, changedAt',

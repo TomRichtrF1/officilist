@@ -4,15 +4,21 @@ import { useAuth } from '../contexts/AuthContext';
 export function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const success = login(password);
+    setIsLoading(true);
+    setError(false);
+    
+    const success = await login(password);
+    
     if (!success) {
       setError(true);
       setPassword('');
     }
+    setIsLoading(false);
   };
 
   return (
@@ -44,6 +50,7 @@ export function Login() {
                 }`}
                 placeholder="••••••••"
                 autoFocus
+                disabled={isLoading}
               />
               {error && (
                 <p className="mt-2 text-sm text-red-600">Nesprávné heslo. Zkuste to znovu.</p>
@@ -52,9 +59,10 @@ export function Login() {
 
             <button
               type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg transition-colors"
+              disabled={isLoading}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium py-3 rounded-lg transition-colors"
             >
-              Vstoupit
+              {isLoading ? 'Přihlašování...' : 'Vstoupit'}
             </button>
           </form>
 

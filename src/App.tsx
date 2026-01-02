@@ -4,10 +4,14 @@ import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { PersonView } from './pages/PersonView';
 import { CalendarView } from './pages/CalendarView';
+import { ReportsView } from './pages/ReportsView';
 import { Sidebar } from './components/Sidebar';
 import { TaskForm } from './components/TaskForm';
+import { TaskDetail } from './components/TaskDetail';
+import { UrgentNotice } from './components/UrgentNotice';
 import { useAppStore } from './stores/appStore';
 import { isTaskUrgent } from './lib/dateUtils';
+import { Task } from './db/dexie';
 import { Menu, Plus, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 
 function AppContent() {
@@ -15,6 +19,9 @@ function AppContent() {
   const [currentView, setCurrentView] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isNewTaskOpen, setIsNewTaskOpen] = useState(false);
+  const [showUrgentNotice, setShowUrgentNotice] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   const tasks = useAppStore((state) => state.tasks);
   const isOnline = useAppStore((state) => state.isOnline);
@@ -24,6 +31,23 @@ function AppContent() {
   const urgentTaskCount = tasks.filter((t) =>
     isTaskUrgent(t.dueDate, t.status)
   ).length;
+
+  // Zobrazit UrgentNotice při prvním načtení po přihlášení
+  useEffect(() => {
+    if (isAuthenticated && tasks.length > 0) {
+      const hasUrgent = tasks.some((t) => 
+        isTaskUrgent(t.dueDate, t.status) && t.status !== 'HOTOVO' && t.status !== 'ZRUSEN'
+      );
+      if (hasUrgent) {
+        // Zobrazit pouze jednou za session
+        const alreadyShown = sessionStorage.getItem('urgentNoticeShown');
+        if (!alreadyShown) {
+          setShowUrgentNotice(true);
+          sessionStorage.setItem('urgentNoticeShown', 'true');
+        }
+      }
+    }
+  }, [isAuthenticated, tasks]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -40,11 +64,19 @@ function AppContent() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  const handleTaskClick = (task: Task) => {
+    setSelectedTask(task);
+    setIsDetailOpen(true);
+  };
+
   if (!isAuthenticated) {
     return <Login />;
   }
 
   const renderView = () => {
+    if (currentView === 'reports') {
+      return <ReportsView onTaskClick={handleTaskClick} />;
+    }
     if (currentView === 'persons') {
       return <PersonView />;
     }
@@ -79,9 +111,12 @@ function AppContent() {
               </button>
               <h1 className="text-xl font-bold text-gray-900">Officilist</h1>
               {urgentTaskCount > 0 && (
-                <span className="px-2 py-1 bg-red-500 text-white text-xs font-bold rounded">
+                <button
+                  onClick={() => setShowUrgentNotice(true)}
+                  className="px-2 py-1 bg-red-500 text-white text-xs font-bold rounded hover:bg-red-600 transition-colors"
+                >
                   {urgentTaskCount}
-                </span>
+                </button>
               )}
             </div>
 
@@ -131,6 +166,25 @@ function AppContent() {
         isOpen={isNewTaskOpen}
         onClose={() => setIsNewTaskOpen(false)}
         defaultFolderId={currentView.startsWith('folder:') ? currentView.split(':')[1] : undefined}
+      />
+
+      <UrgentNotice
+        isOpen={showUrgentNotice}
+        onClose={() => setShowUrgentNotice(false)}
+        onTaskClick={handleTaskClick}
+      />
+
+      <TaskDetail
+        task={selectedTask}
+        isOpen={isDetailOpen}
+        onClose={() => {
+          setIsDetailOpen(false);
+          setSelectedTask(null);
+        }}
+        onEdit={() => {
+          setIsDetailOpen(false);
+          setIsNewTaskOpen(true);
+        }}
       />
     </div>
   );

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { db, Folder, Person, Task, TaskHistory, TaskDependency } from '../db/dexie';
-import { supabase } from '../lib/supabase';
+import * as api from '../lib/api';
 
 interface AppState {
   folders: Folder[];
@@ -17,6 +17,7 @@ interface AppState {
   setOnline: (value: boolean) => void;
 
   loadData: () => Promise<void>;
+  loadFolders: () => Promise<void>;
 
   createTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Task>;
   updateTask: (id: string, updates: Partial<Task>) => Promise<void>;
@@ -53,6 +54,41 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ folders, persons, tasks, taskDependencies });
   },
 
+  loadFolders: async () => {
+    if (!get().isOnline || !api.isAuthenticated()) {
+      // Offline - načíst z lokální DB
+      const folders = await db.folders.toArray();
+      set({ folders });
+      return;
+    }
+
+    try {
+      // Online - stáhnout ze serveru
+      const folders = await api.getFolders();
+      if (folders) {
+        await db.folders.clear();
+        await db.folders.bulkAdd(
+          folders.map((f) => ({
+            id: f.id,
+            name: f.name,
+            type: f.type,
+            color: f.color,
+            icon: f.icon,
+            order: f.order,
+            isArchived: f.isArchived || false,
+            createdAt: f.createdAt,
+          }))
+        );
+        set({ folders });
+      }
+    } catch (error) {
+      console.error('Failed to load folders:', error);
+      // Fallback na lokální data
+      const folders = await db.folders.toArray();
+      set({ folders });
+    }
+  },
+
   createTask: async (taskData) => {
     const task: Task = {
       ...taskData,
@@ -61,6 +97,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       updatedAt: new Date().toISOString(),
     };
 
+    // Uložit lokálně
     await db.tasks.add(task);
 
     const history: TaskHistory = {
@@ -72,6 +109,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     };
     await db.taskHistory.add(history);
 
+    // Přidat do sync fronty
     await db.syncQueue.add({
       operation: 'INSERT',
       table: 'tasks',
@@ -82,6 +120,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     set((state) => ({ tasks: [...state.tasks, task] }));
 
+    // Synchronizovat s serverem
     if (get().isOnline) {
       get().syncWithServer();
     }
@@ -99,16 +138,19 @@ export const useAppStore = create<AppState>((set, get) => ({
       updatedAt: new Date().toISOString(),
     };
 
+    // Automaticky nastavit completedAt při dokončení
     if (updates.status === 'HOTOVO' && !updatedTask.completedAt) {
       updatedTask.completedAt = new Date().toISOString();
     }
 
+    // Automaticky změnit status na ZADANY při přiřazení vlastníka
     if (oldTask.status === 'NOVY' && updates.ownerId && !updates.status) {
       updatedTask.status = 'ZADANY';
     }
 
     await db.tasks.update(id, updatedTask);
 
+    // Zaznamenat změny do historie
     for (const [key, value] of Object.entries(updates)) {
       if (value !== undefined && value !== (oldTask as any)[key]) {
         const history: TaskHistory = {
@@ -224,44 +266,46 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   syncWithServer: async () => {
-    if (get().isSyncing || !get().isOnline) return;
+    if (get().isSyncing || !get().isOnline || !api.isAuthenticated()) return;
 
     set({ isSyncing: true });
 
     try {
+      // Zpracovat frontu změn
       const queueItems = await db.syncQueue.toArray();
 
       for (const item of queueItems) {
         try {
           if (item.table === 'tasks') {
-            if (item.operation === 'INSERT' || item.operation === 'UPDATE') {
-              const { id, createdAt, updatedAt, ...taskData } = item.data;
-              await supabase.from('tasks').upsert({
-                id,
-                ...taskData,
-                folder_id: taskData.folderId,
-                owner_id: taskData.ownerId,
-                is_priority: taskData.isPriority,
-                due_date: taskData.dueDate,
-                created_at: createdAt,
-                updated_at: updatedAt,
-                completed_at: taskData.completedAt,
+            if (item.operation === 'INSERT') {
+              await api.createTask({
+                folderId: item.data.folderId,
+                title: item.data.title,
+                type: item.data.type,
+                description: item.data.description,
+                url: item.data.url,
+                ownerId: item.data.ownerId,
+                isPriority: item.data.isPriority,
+                dueDate: item.data.dueDate,
               });
+            } else if (item.operation === 'UPDATE') {
+              await api.updateTask(item.recordId, item.data);
             } else if (item.operation === 'DELETE') {
-              await supabase.from('tasks').delete().eq('id', item.recordId);
+              await api.deleteTask(item.recordId);
             }
           } else if (item.table === 'persons') {
-            if (item.operation === 'INSERT' || item.operation === 'UPDATE') {
-              const { id, createdAt, ...personData } = item.data;
-              await supabase.from('persons').upsert({
-                id,
-                ...personData,
-                is_active: personData.isActive,
-                created_at: createdAt,
+            if (item.operation === 'INSERT') {
+              await api.createPerson({
+                name: item.data.name,
+                email: item.data.email,
+                phone: item.data.phone,
               });
+            } else if (item.operation === 'UPDATE') {
+              await api.updatePerson(item.recordId, item.data);
             }
           }
 
+          // Odstranit zpracovanou položku z fronty
           if (item.id) {
             await db.syncQueue.delete(item.id);
           }
@@ -270,7 +314,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         }
       }
 
-      const { data: folders } = await supabase.from('folders').select('*');
+      // Stáhnout aktuální data ze serveru
+      const folders = await api.getFolders();
       if (folders) {
         await db.folders.clear();
         await db.folders.bulkAdd(
@@ -281,12 +326,13 @@ export const useAppStore = create<AppState>((set, get) => ({
             color: f.color,
             icon: f.icon,
             order: f.order,
-            createdAt: f.created_at,
+            isArchived: f.isArchived || false,
+            createdAt: f.createdAt,
           }))
         );
       }
 
-      const { data: persons } = await supabase.from('persons').select('*');
+      const persons = await api.getPersons();
       if (persons) {
         await db.persons.clear();
         await db.persons.bulkAdd(
@@ -295,30 +341,30 @@ export const useAppStore = create<AppState>((set, get) => ({
             name: p.name,
             email: p.email,
             phone: p.phone,
-            isActive: p.is_active,
-            createdAt: p.created_at,
+            isActive: p.isActive,
+            createdAt: p.createdAt,
           }))
         );
       }
 
-      const { data: tasks } = await supabase.from('tasks').select('*');
+      const tasks = await api.getTasks();
       if (tasks) {
         await db.tasks.clear();
         await db.tasks.bulkAdd(
           tasks.map((t) => ({
             id: t.id,
-            folderId: t.folder_id,
+            folderId: t.folderId,
             type: t.type,
             title: t.title,
             description: t.description,
             url: t.url,
-            ownerId: t.owner_id,
+            ownerId: t.ownerId,
             status: t.status,
-            isPriority: t.is_priority,
-            dueDate: t.due_date,
-            createdAt: t.created_at,
-            updatedAt: t.updated_at,
-            completedAt: t.completed_at,
+            isPriority: t.isPriority,
+            dueDate: t.dueDate,
+            createdAt: t.createdAt,
+            updatedAt: t.updatedAt,
+            completedAt: t.completedAt,
           }))
         );
       }
@@ -327,6 +373,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       localStorage.setItem('lastSyncTime', lastSyncTime);
       set({ lastSyncTime });
 
+      // Načíst data do stavu
       await get().loadData();
     } catch (error) {
       console.error('Sync failed:', error);
@@ -336,6 +383,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 }));
 
+// Sledovat změny připojení
 window.addEventListener('online', () => {
   useAppStore.getState().setOnline(true);
   useAppStore.getState().syncWithServer();
