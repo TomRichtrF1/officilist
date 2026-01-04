@@ -32,6 +32,9 @@ function AppContent() {
     isTaskUrgent(t.dueDate, t.status)
   ).length;
 
+  // Získat aktuální task ze store (aby se dialog aktualizoval po změně stavu)
+  const currentTask = selectedTask ? tasks.find(t => t.id === selectedTask.id) || null : null;
+
   // Zobrazit UrgentNotice při prvním načtení po přihlášení
   useEffect(() => {
     if (isAuthenticated && tasks.length > 0) {
@@ -175,7 +178,7 @@ function AppContent() {
       />
 
       <TaskDetail
-        task={selectedTask}
+        task={currentTask}
         isOpen={isDetailOpen}
         onClose={() => {
           setIsDetailOpen(false);

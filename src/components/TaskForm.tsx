@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal } from './ui/Modal';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
@@ -32,6 +32,13 @@ export function TaskForm({ isOpen, onClose, task, defaultFolderId }: TaskFormPro
     description: task?.description || '',
     url: task?.url || '',
   });
+
+  // Synchronizace folderId když se načtou složky
+  useEffect(() => {
+    if (!formData.folderId && folders.length > 0 && !task) {
+      setFormData(prev => ({ ...prev, folderId: defaultFolderId || folders[0].id }));
+    }
+  }, [folders, defaultFolderId, task]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
