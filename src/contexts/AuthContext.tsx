@@ -27,14 +27,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (valid) {
             setIsAuthenticated(true);
             setAuthenticatedStore(true);
+            // Nejprve synchronizovat se serverem (stáhne čerstvá data), pak načíst
+            await syncWithServer();
             await loadData();
-            syncWithServer();
           } else {
             // Token je neplatný, odstranit ho
             api.logout();
           }
         } catch (error) {
           console.error('Auth check failed:', error);
+          // Při chybě stále načíst lokální data
+          await loadData();
           api.logout();
         }
       }
@@ -49,8 +52,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await api.login(password);
       setIsAuthenticated(true);
       setAuthenticatedStore(true);
+      // Nejprve synchronizovat se serverem (stáhne čerstvá data), pak načíst
+      await syncWithServer();
       await loadData();
-      syncWithServer();
       return true;
     } catch (error) {
       console.error('Login failed:', error);
