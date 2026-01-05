@@ -111,19 +111,17 @@ export function ReportsView({ onTaskClick }: ReportsViewProps) {
       .sort((a, b) => b.active - a.active);
   }, [tasks, persons]);
 
-  // Nadcházející úkoly (příštích 14 dní)
+  // Nadcházející úkoly (všechny budoucí)
   const upcomingTasks = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const twoWeeks = new Date(today);
-    twoWeeks.setDate(twoWeeks.getDate() + 14);
 
     return tasks
       .filter((t) => {
         if (t.status === 'HOTOVO' || t.status === 'ZRUSEN' || !t.dueDate) return false;
         const dueDate = new Date(t.dueDate);
         dueDate.setHours(0, 0, 0, 0);
-        return dueDate >= today && dueDate <= twoWeeks;
+        return dueDate >= today;
       })
       .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime())
       .slice(0, 10);
@@ -370,7 +368,7 @@ export function ReportsView({ onTaskClick }: ReportsViewProps) {
       <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
         <div className="flex items-center gap-3 mb-4">
           <Calendar className="text-orange-600" size={20} />
-          <h2 className="font-semibold text-gray-900">Nadcházející termíny (14 dní)</h2>
+          <h2 className="font-semibold text-gray-900">Nadcházející termíny</h2>
         </div>
         {upcomingTasks.length > 0 ? (
           <div className="space-y-2">

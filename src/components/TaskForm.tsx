@@ -40,6 +40,38 @@ export function TaskForm({ isOpen, onClose, task, defaultFolderId }: TaskFormPro
     }
   }, [folders, defaultFolderId, task]);
 
+  // Reset formuláře při otevření
+  useEffect(() => {
+    if (isOpen) {
+      if (task) {
+        // Editace existujícího úkolu
+        setFormData({
+          title: task.title || '',
+          folderId: task.folderId || defaultFolderId || folders[0]?.id || '',
+          type: task.type || 'TASK',
+          ownerId: task.ownerId || '',
+          dueDate: task.dueDate ? task.dueDate.split('T')[0] : '',
+          isPriority: task.isPriority || false,
+          description: task.description || '',
+          url: task.url || '',
+        });
+      } else {
+        // Nový úkol - prázdný formulář
+        setFormData({
+          title: '',
+          folderId: defaultFolderId || folders[0]?.id || '',
+          type: 'TASK',
+          ownerId: '',
+          dueDate: '',
+          isPriority: false,
+          description: '',
+          url: '',
+        });
+      }
+      setShowMore(false);
+    }
+  }, [isOpen, task, defaultFolderId, folders]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
