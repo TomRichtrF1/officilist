@@ -61,6 +61,12 @@ export function TaskDetail({ task, isOpen, onClose, onEdit }: TaskDetailProps) {
   const [messageChannel, setMessageChannel] = useState<MessageChannel>('email');
   const [copySuccess, setCopySuccess] = useState(false);
 
+  // State pro potvrzení změny stavu
+  const [pendingStatus, setPendingStatus] = useState<string | null>(null);
+  const [isStatusConfirmOpen, setIsStatusConfirmOpen] = useState(false);
+  const [isWaitingModalOpen, setIsWaitingModalOpen] = useState(false);
+  const [waitingForInput, setWaitingForInput] = useState('');
+
   useEffect(() => {
     if (task && isOpen) {
       loadTaskHistory(task.id);
@@ -73,8 +79,41 @@ export function TaskDetail({ task, isOpen, onClose, onEdit }: TaskDetailProps) {
   const owner = task.ownerId ? persons.find((p) => p.id === task.ownerId) : null;
   const history = taskHistory[task.id] || [];
 
-  const handleStatusChange = async (newStatus: string) => {
-    await updateTask(task.id, { status: newStatus as any });
+  const handleStatusChange = (newStatus: string) => {
+    if (newStatus === task.status) return;
+
+    setPendingStatus(newStatus);
+    if (newStatus === 'CEKAJICI') {
+      setWaitingForInput(task.waitingFor || '');
+      setIsWaitingModalOpen(true);
+    } else {
+      setIsStatusConfirmOpen(true);
+    }
+  };
+
+  const confirmStatusChange = async () => {
+    if (!pendingStatus) return;
+    await updateTask(task.id, { status: pendingStatus as any });
+    setIsStatusConfirmOpen(false);
+    setPendingStatus(null);
+  };
+
+  const confirmWaitingStatus = async () => {
+    if (!waitingForInput.trim()) return;
+    await updateTask(task.id, {
+      status: 'CEKAJICI' as any,
+      waitingFor: waitingForInput.trim()
+    });
+    setIsWaitingModalOpen(false);
+    setPendingStatus(null);
+    setWaitingForInput('');
+  };
+
+  const cancelStatusChange = () => {
+    setIsStatusConfirmOpen(false);
+    setIsWaitingModalOpen(false);
+    setPendingStatus(null);
+    setWaitingForInput('');
   };
 
   const handleComplete = async () => {
@@ -211,6 +250,13 @@ export function TaskDetail({ task, isOpen, onClose, onEdit }: TaskDetailProps) {
             <div>
               <h3 className="text-sm font-medium text-gray-700 mb-2">Popis</h3>
               <p className="text-gray-600 whitespace-pre-wrap">{task.description}</p>
+            </div>
+          )}
+
+          {task.status === 'CEKAJICI' && task.waitingFor && (
+            <div>
+              <h3 className="text-sm font-medium text-gray-700 mb-2">Na co se čeká</h3>
+              <p className="text-orange-600 font-medium">{task.waitingFor}</p>
             </div>
           )}
 
@@ -379,6 +425,76 @@ export function TaskDetail({ task, isOpen, onClose, onEdit }: TaskDetailProps) {
               >
                 <Copy size={16} />
                 {copySuccess ? 'Zkopírováno!' : 'Kopírovat text'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dialog pro potvrzení změny stavu */}
+      {isStatusConfirmOpen && pendingStatus && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm">
+            <div className="p-4 border-b">
+              <h3 className="font-semibold text-gray-900">Potvrdit změnu stavu</h3>
+            </div>
+            <div className="p-4">
+              <p className="text-gray-600">
+                Změnit stav z <strong>{STATUS_LABELS[task.status as keyof typeof STATUS_LABELS]}</strong> na{' '}
+                <strong>{STATUS_LABELS[pendingStatus as keyof typeof STATUS_LABELS]}</strong>?
+              </p>
+            </div>
+            <div className="flex justify-end gap-2 p-4 border-t bg-gray-50 rounded-b-xl">
+              <button
+                onClick={cancelStatusChange}
+                className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Zrušit
+              </button>
+              <button
+                onClick={confirmStatusChange}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+              >
+                Potvrdit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dialog pro zadání důvodu čekání */}
+      {isWaitingModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
+            <div className="p-4 border-b">
+              <h3 className="font-semibold text-gray-900">Změnit stav na Čekající</h3>
+            </div>
+            <div className="p-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Na co se čeká:
+              </label>
+              <input
+                type="text"
+                value={waitingForInput}
+                onChange={(e) => setWaitingForInput(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Zadejte důvod čekání..."
+                autoFocus
+              />
+            </div>
+            <div className="flex justify-end gap-2 p-4 border-t bg-gray-50 rounded-b-xl">
+              <button
+                onClick={cancelStatusChange}
+                className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Zrušit
+              </button>
+              <button
+                onClick={confirmWaitingStatus}
+                disabled={!waitingForInput.trim()}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Potvrdit
               </button>
             </div>
           </div>

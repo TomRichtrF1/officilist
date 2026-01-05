@@ -173,6 +173,51 @@ export function ReportsView({ onTaskClick }: ReportsViewProps) {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-gray-900">📊 Reporty</h1>
 
+      {/* Nadcházející úkoly */}
+      <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+        <div className="flex items-center gap-3 mb-4">
+          <Calendar className="text-orange-600" size={20} />
+          <h2 className="font-semibold text-gray-900">Nadcházející termíny</h2>
+        </div>
+        {upcomingTasks.length > 0 ? (
+          <div className="space-y-2">
+            {upcomingTasks.map((task) => {
+              const folder = getFolder(task.folderId);
+              const owner = getPerson(task.ownerId);
+              return (
+                <button
+                  key={task.id}
+                  onClick={() => onTaskClick?.(task)}
+                  className="w-full flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:border-blue-300 hover:bg-blue-50 transition-colors text-left"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    {task.isPriority && <span className="text-red-500">❗</span>}
+                    <div className="min-w-0">
+                      <p className="font-medium text-gray-900 truncate">{task.title}</p>
+                      <div className="flex items-center gap-2 text-sm text-gray-500">
+                        {folder && (
+                          <span style={{ color: folder.color }}>
+                            {folder.icon} {folder.name}
+                          </span>
+                        )}
+                        {owner && <span>• {owner.name}</span>}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-sm font-medium text-orange-600 whitespace-nowrap ml-3">
+                    {formatDate(task.dueDate!)}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500 text-center py-4">
+            Žádné úkoly s termínem v příštích 14 dnech
+          </p>
+        )}
+      </div>
+
       {/* Hlavní statistiky */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
@@ -362,51 +407,6 @@ export function ReportsView({ onTaskClick }: ReportsViewProps) {
             )}
           </div>
         </div>
-      </div>
-
-      {/* Nadcházející úkoly */}
-      <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
-        <div className="flex items-center gap-3 mb-4">
-          <Calendar className="text-orange-600" size={20} />
-          <h2 className="font-semibold text-gray-900">Nadcházející termíny</h2>
-        </div>
-        {upcomingTasks.length > 0 ? (
-          <div className="space-y-2">
-            {upcomingTasks.map((task) => {
-              const folder = getFolder(task.folderId);
-              const owner = getPerson(task.ownerId);
-              return (
-                <button 
-                  key={task.id}
-                  onClick={() => onTaskClick?.(task)}
-                  className="w-full flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:border-blue-300 hover:bg-blue-50 transition-colors text-left"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    {task.isPriority && <span className="text-red-500">❗</span>}
-                    <div className="min-w-0">
-                      <p className="font-medium text-gray-900 truncate">{task.title}</p>
-                      <div className="flex items-center gap-2 text-sm text-gray-500">
-                        {folder && (
-                          <span style={{ color: folder.color }}>
-                            {folder.icon} {folder.name}
-                          </span>
-                        )}
-                        {owner && <span>• {owner.name}</span>}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-sm font-medium text-orange-600 whitespace-nowrap ml-3">
-                    {formatDate(task.dueDate!)}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="text-sm text-gray-500 text-center py-4">
-            Žádné úkoly s termínem v příštích 14 dnech
-          </p>
-        )}
       </div>
     </div>
   );

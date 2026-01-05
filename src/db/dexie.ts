@@ -31,6 +31,7 @@ export interface Task {
   status: 'NOVY' | 'ZADANY' | 'CEKAJICI' | 'HOTOVO' | 'ZRUSEN';
   isPriority: boolean;
   dueDate?: string;
+  waitingFor?: string;
   createdAt: string;
   updatedAt: string;
   completedAt?: string;
@@ -83,6 +84,16 @@ export class OfficelistDB extends Dexie {
 
     // Verze 2: přidání isArchived pro složky
     this.version(2).stores({
+      folders: 'id, type, order, isArchived',
+      persons: 'id, name, isActive',
+      tasks: 'id, folderId, ownerId, status, dueDate, isPriority, updatedAt',
+      taskHistory: 'id, taskId, changedAt',
+      taskDependencies: 'id, taskId, dependsOnId',
+      syncQueue: '++id, timestamp, table'
+    });
+
+    // Verze 3: přidání waitingFor pro úkoly
+    this.version(3).stores({
       folders: 'id, type, order, isArchived',
       persons: 'id, name, isActive',
       tasks: 'id, folderId, ownerId, status, dueDate, isPriority, updatedAt',

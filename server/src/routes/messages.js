@@ -40,9 +40,9 @@ router.post('/generate', async (req, res) => {
     const prompt = buildPrompt(task, type, channel);
 
     // Volat Perplexity API
-    const apiKey = process.env.PERPLEXITY_API_KEY;
+    const apiKey = process.env['PERPLEXITY-KEY'];
     if (!apiKey) {
-      return res.status(500).json({ error: 'PERPLEXITY_API_KEY není nastaven.' });
+      return res.status(500).json({ error: 'PERPLEXITY-KEY není nastaven.' });
     }
 
     const response = await fetch(PERPLEXITY_API_URL, {

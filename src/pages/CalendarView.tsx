@@ -14,6 +14,9 @@ export function CalendarView() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
+  // Získat aktuální verzi vybraného tasku ze store pro reaktivitu
+  const currentTask = selectedTask ? tasks.find(t => t.id === selectedTask.id) || null : null;
+
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
   const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
@@ -128,7 +131,7 @@ export function CalendarView() {
       )}
 
       <TaskDetail
-        task={selectedTask}
+        task={currentTask}
         isOpen={isDetailOpen}
         onClose={() => {
           setIsDetailOpen(false);

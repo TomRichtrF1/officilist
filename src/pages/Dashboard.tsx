@@ -17,6 +17,9 @@ export function Dashboard({ folderId }: DashboardProps) {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
 
+  // Získat aktuální verzi vybraného tasku ze store pro reaktivitu
+  const currentTask = selectedTask ? tasks.find(t => t.id === selectedTask.id) || null : null;
+
   const filteredTasks = folderId
     ? tasks.filter((t) => t.folderId === folderId)
     : tasks;
@@ -34,7 +37,7 @@ export function Dashboard({ folderId }: DashboardProps) {
   };
 
   const handleEdit = () => {
-    setEditingTask(selectedTask);
+    setEditingTask(currentTask);
     setIsDetailOpen(false);
     setIsFormOpen(true);
   };
@@ -91,7 +94,7 @@ export function Dashboard({ folderId }: DashboardProps) {
       />
 
       <TaskDetail
-        task={selectedTask}
+        task={currentTask}
         isOpen={isDetailOpen}
         onClose={handleDetailClose}
         onEdit={handleEdit}

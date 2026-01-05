@@ -19,6 +19,9 @@ export function PersonView() {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isAddPersonOpen, setIsAddPersonOpen] = useState(false);
 
+  // Získat aktuální verzi vybraného tasku ze store pro reaktivitu
+  const currentTask = selectedTask ? tasks.find(t => t.id === selectedTask.id) || null : null;
+
   const [newPersonData, setNewPersonData] = useState({
     name: '',
     email: '',
@@ -177,7 +180,7 @@ export function PersonView() {
       </Modal>
 
       <TaskDetail
-        task={selectedTask}
+        task={currentTask}
         isOpen={isDetailOpen}
         onClose={() => {
           setIsDetailOpen(false);
