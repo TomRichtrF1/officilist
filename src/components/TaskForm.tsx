@@ -88,6 +88,10 @@ export function TaskForm({ isOpen, onClose, task, defaultFolderId }: TaskFormPro
     e.preventDefault();
 
     if (!formData.title.trim()) return;
+    if (!formData.folderId) {
+      alert('Vyberte složku pro úkol.');
+      return;
+    }
 
     // Připravit reminder data
     let reminderDate: string | undefined;
