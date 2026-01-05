@@ -31,8 +31,34 @@ export function getWorkingDaysBetween(startDate: Date, endDate: Date): number {
   return count;
 }
 
-export function isTaskUrgent(dueDate: string | null | undefined, status: string): boolean {
-  if (!dueDate || status === 'HOTOVO' || status === 'ZRUSEN') {
+export interface TaskReminderInfo {
+  dueDate?: string | null;
+  status: string;
+  reminderDate?: string | null;
+  reminderDaysBefore?: number | null;
+}
+
+export function isTaskUrgent(
+  dueDateOrTask: string | null | undefined | TaskReminderInfo,
+  status?: string
+): boolean {
+  // Podpora pro původní signaturu (dueDate, status) i novou (task object)
+  let dueDate: string | null | undefined;
+  let taskStatus: string;
+  let reminderDate: string | null | undefined;
+  let reminderDaysBefore: number | null | undefined;
+
+  if (typeof dueDateOrTask === 'object' && dueDateOrTask !== null) {
+    dueDate = dueDateOrTask.dueDate;
+    taskStatus = dueDateOrTask.status;
+    reminderDate = dueDateOrTask.reminderDate;
+    reminderDaysBefore = dueDateOrTask.reminderDaysBefore;
+  } else {
+    dueDate = dueDateOrTask;
+    taskStatus = status || '';
+  }
+
+  if (!dueDate || taskStatus === 'HOTOVO' || taskStatus === 'ZRUSEN') {
     return false;
   }
 
@@ -41,10 +67,25 @@ export function isTaskUrgent(dueDate: string | null | undefined, status: string)
   today.setHours(0, 0, 0, 0);
   due.setHours(0, 0, 0, 0);
 
+  // Úkol po termínu je vždy urgentní
   if (due < today) {
     return true;
   }
 
+  // Pokud je nastaveno konkrétní datum připomenutí
+  if (reminderDate) {
+    const reminder = new Date(reminderDate);
+    reminder.setHours(0, 0, 0, 0);
+    return today >= reminder;
+  }
+
+  // Pokud je nastaven počet dní před termínem
+  if (reminderDaysBefore !== null && reminderDaysBefore !== undefined) {
+    const workingDays = getWorkingDaysBetween(today, due);
+    return workingDays <= reminderDaysBefore;
+  }
+
+  // Výchozí: 3 pracovní dny (zachování zpětné kompatibility)
   const workingDays = getWorkingDaysBetween(today, due);
   return workingDays <= 3;
 }

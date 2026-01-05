@@ -160,6 +160,8 @@ export interface Task {
   status: 'NOVY' | 'ZADANY' | 'CEKAJICI' | 'HOTOVO' | 'ZRUSEN';
   isPriority: boolean;
   dueDate: string | null;
+  reminderDate: string | null;
+  reminderDaysBefore: number | null;
   createdAt: string;
   updatedAt: string;
   completedAt: string | null;
@@ -219,6 +221,8 @@ export async function createTask(data: {
   ownerId?: string;
   isPriority?: boolean;
   dueDate?: string;
+  reminderDate?: string;
+  reminderDaysBefore?: number;
   dependsOnIds?: string[];
 }): Promise<Task> {
   return fetchAPI<Task>('/tasks', {

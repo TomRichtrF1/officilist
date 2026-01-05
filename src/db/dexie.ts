@@ -32,6 +32,8 @@ export interface Task {
   isPriority: boolean;
   dueDate?: string;
   waitingFor?: string;
+  reminderDate?: string;
+  reminderDaysBefore?: number;
   createdAt: string;
   updatedAt: string;
   completedAt?: string;
@@ -97,6 +99,16 @@ export class OfficelistDB extends Dexie {
       folders: 'id, type, order, isArchived',
       persons: 'id, name, isActive',
       tasks: 'id, folderId, ownerId, status, dueDate, isPriority, updatedAt',
+      taskHistory: 'id, taskId, changedAt',
+      taskDependencies: 'id, taskId, dependsOnId',
+      syncQueue: '++id, timestamp, table'
+    });
+
+    // Verze 4: přidání reminderDate a reminderDaysBefore pro úkoly
+    this.version(4).stores({
+      folders: 'id, type, order, isArchived',
+      persons: 'id, name, isActive',
+      tasks: 'id, folderId, ownerId, status, dueDate, isPriority, updatedAt, reminderDate',
       taskHistory: 'id, taskId, changedAt',
       taskDependencies: 'id, taskId, dependsOnId',
       syncQueue: '++id, timestamp, table'

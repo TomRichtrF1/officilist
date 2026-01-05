@@ -55,6 +55,12 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
             )}
           </div>
 
+          {task.status === 'CEKAJICI' && task.waitingFor && (
+            <div className="mt-2 text-sm text-orange-600 font-medium">
+              ⏳ Čeká na: {task.waitingFor}
+            </div>
+          )}
+
           {task.description && (
             <p className="mt-2 text-sm text-gray-500 line-clamp-2">{task.description}</p>
           )}

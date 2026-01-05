@@ -31,6 +31,10 @@ export function TaskForm({ isOpen, onClose, task, defaultFolderId }: TaskFormPro
     isPriority: task?.isPriority || false,
     description: task?.description || '',
     url: task?.url || '',
+    reminderType: task?.reminderDate ? 'date' : task?.reminderDaysBefore ? 'days' : 'none',
+    reminderDate: task?.reminderDate ? task.reminderDate.split('T')[0] : '',
+    reminderTime: task?.reminderDate ? task.reminderDate.split('T')[1]?.slice(0, 5) || '09:00' : '09:00',
+    reminderDaysBefore: task?.reminderDaysBefore?.toString() || '3',
   });
 
   // Synchronizace folderId když se načtou složky
@@ -54,6 +58,10 @@ export function TaskForm({ isOpen, onClose, task, defaultFolderId }: TaskFormPro
           isPriority: task.isPriority || false,
           description: task.description || '',
           url: task.url || '',
+          reminderType: task.reminderDate ? 'date' : task.reminderDaysBefore ? 'days' : 'none',
+          reminderDate: task.reminderDate ? task.reminderDate.split('T')[0] : '',
+          reminderTime: task.reminderDate ? task.reminderDate.split('T')[1]?.slice(0, 5) || '09:00' : '09:00',
+          reminderDaysBefore: task.reminderDaysBefore?.toString() || '3',
         });
       } else {
         // Nový úkol - prázdný formulář
@@ -66,6 +74,10 @@ export function TaskForm({ isOpen, onClose, task, defaultFolderId }: TaskFormPro
           isPriority: false,
           description: '',
           url: '',
+          reminderType: 'none',
+          reminderDate: '',
+          reminderTime: '09:00',
+          reminderDaysBefore: '3',
         });
       }
       setShowMore(false);
@@ -77,6 +89,17 @@ export function TaskForm({ isOpen, onClose, task, defaultFolderId }: TaskFormPro
 
     if (!formData.title.trim()) return;
 
+    // Připravit reminder data
+    let reminderDate: string | undefined;
+    let reminderDaysBefore: number | undefined;
+
+    if (formData.reminderType === 'date' && formData.reminderDate) {
+      const dateTime = `${formData.reminderDate}T${formData.reminderTime || '09:00'}:00`;
+      reminderDate = new Date(dateTime).toISOString();
+    } else if (formData.reminderType === 'days' && formData.reminderDaysBefore) {
+      reminderDaysBefore = parseInt(formData.reminderDaysBefore, 10);
+    }
+
     const taskData = {
       title: formData.title.trim(),
       folderId: formData.folderId,
@@ -87,6 +110,8 @@ export function TaskForm({ isOpen, onClose, task, defaultFolderId }: TaskFormPro
       dueDate: formData.dueDate ? new Date(formData.dueDate).toISOString() : undefined,
       description: formData.description.trim() || undefined,
       url: formData.url.trim() || undefined,
+      reminderDate,
+      reminderDaysBefore,
     };
 
     if (task) {
@@ -199,6 +224,79 @@ export function TaskForm({ isOpen, onClose, task, defaultFolderId }: TaskFormPro
 
         {showMore && (
           <div className="space-y-4 pt-2">
+            {/* Připomenutí */}
+            <div className="space-y-3 p-3 bg-gray-50 rounded-lg">
+              <label className="block text-sm font-medium text-gray-700">
+                🔔 Připomenutí
+              </label>
+              <div className="flex flex-wrap gap-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="reminderType"
+                    value="none"
+                    checked={formData.reminderType === 'none'}
+                    onChange={(e) => handleChange('reminderType', e.target.value)}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm text-gray-700">Žádné</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="reminderType"
+                    value="days"
+                    checked={formData.reminderType === 'days'}
+                    onChange={(e) => handleChange('reminderType', e.target.value)}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm text-gray-700">Dní před termínem</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="reminderType"
+                    value="date"
+                    checked={formData.reminderType === 'date'}
+                    onChange={(e) => handleChange('reminderType', e.target.value)}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm text-gray-700">Konkrétní datum</span>
+                </label>
+              </div>
+
+              {formData.reminderType === 'days' && (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="1"
+                    max="30"
+                    value={formData.reminderDaysBefore}
+                    onChange={(e) => handleChange('reminderDaysBefore', e.target.value)}
+                    className="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-600">pracovních dní před termínem</span>
+                </div>
+              )}
+
+              {formData.reminderType === 'date' && (
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    type="date"
+                    label="Datum"
+                    value={formData.reminderDate}
+                    onChange={(e) => handleChange('reminderDate', e.target.value)}
+                  />
+                  <Input
+                    type="time"
+                    label="Čas"
+                    value={formData.reminderTime}
+                    onChange={(e) => handleChange('reminderTime', e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+
             <Textarea
               label="Popis"
               value={formData.description}

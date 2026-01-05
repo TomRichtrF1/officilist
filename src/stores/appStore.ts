@@ -287,6 +287,8 @@ export const useAppStore = create<AppState>((set, get) => ({
                 ownerId: item.data.ownerId,
                 isPriority: item.data.isPriority,
                 dueDate: item.data.dueDate,
+                reminderDate: item.data.reminderDate,
+                reminderDaysBefore: item.data.reminderDaysBefore,
               });
             } else if (item.operation === 'UPDATE') {
               await api.updateTask(item.recordId, item.data);
@@ -362,6 +364,8 @@ export const useAppStore = create<AppState>((set, get) => ({
             status: t.status,
             isPriority: t.isPriority,
             dueDate: t.dueDate,
+            reminderDate: t.reminderDate,
+            reminderDaysBefore: t.reminderDaysBefore,
             createdAt: t.createdAt,
             updatedAt: t.updatedAt,
             completedAt: t.completedAt,
