@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Users, Calendar, X, BarChart3, Plus, Pencil, ChevronUp, ChevronDown } from 'lucide-react';
+import { Users, Calendar, X, BarChart3, Plus, Pencil, ChevronUp, ChevronDown, Home } from 'lucide-react';
 import { useAppStore } from '../stores/appStore';
 import { FolderForm } from './FolderForm';
 import { Folder } from '../db/dexie';
@@ -205,6 +205,18 @@ export function Sidebar({ currentView, onViewChange, isOpen, onClose }: SidebarP
             </div>
 
             <div className="border-t pt-4 space-y-1">
+              <button
+                onClick={() => handleViewChange('dashboard')}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                  currentView === 'dashboard'
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'hover:bg-gray-100 text-gray-700'
+                }`}
+              >
+                <Home size={20} />
+                <span className="text-sm font-medium">Domů</span>
+              </button>
+
               <button
                 onClick={() => handleViewChange('reports')}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
