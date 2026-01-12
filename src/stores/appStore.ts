@@ -51,6 +51,22 @@ export const useAppStore = create<AppState>((set, get) => ({
     const tasks = await db.tasks.toArray();
     const taskDependencies = await db.taskDependencies.toArray();
 
+    // Seřadit úkoly podle: isPriority DESC, dueDate ASC, createdAt DESC
+    tasks.sort((a, b) => {
+      // 1. Prioritní úkoly první
+      if (a.isPriority !== b.isPriority) {
+        return b.isPriority ? 1 : -1;
+      }
+      // 2. Podle termínu (nejdřívější první, null na konec)
+      if (a.dueDate !== b.dueDate) {
+        if (!a.dueDate) return 1;
+        if (!b.dueDate) return -1;
+        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+      }
+      // 3. Podle data vytvoření (nejnovější první)
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
     set({ folders, persons, tasks, taskDependencies });
   },
 
