@@ -1,32 +1,27 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useAppStore } from '../stores/appStore';
 import { TaskCard } from '../components/TaskCard';
 import { TaskDetail } from '../components/TaskDetail';
-import { Modal } from '../components/ui/Modal';
-import { Input } from '../components/ui/Input';
+import { PersonForm } from '../components/PersonForm';
 import { Button } from '../components/ui/Button';
-import { Task } from '../db/dexie';
-import { ChevronDown, ChevronRight, Plus, Search } from 'lucide-react';
+import { Person, Task } from '../db/dexie';
+import { ChevronDown, ChevronRight, Pencil, Plus, Search } from 'lucide-react';
 
 export function PersonView() {
   const persons = useAppStore((state) => state.persons);
   const tasks = useAppStore((state) => state.tasks);
   const createPerson = useAppStore((state) => state.createPerson);
+  const updatePerson = useAppStore((state) => state.updatePerson);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedPersons, setExpandedPersons] = useState<Set<string>>(new Set());
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isAddPersonOpen, setIsAddPersonOpen] = useState(false);
+  const [editingPerson, setEditingPerson] = useState<Person | null>(null);
 
   // Získat aktuální verzi vybraného tasku ze store pro reaktivitu
   const currentTask = selectedTask ? tasks.find(t => t.id === selectedTask.id) || null : null;
-
-  const [newPersonData, setNewPersonData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-  });
 
   const filteredPersons = persons
     .filter((p) => p.isActive)
@@ -47,19 +42,22 @@ export function PersonView() {
     setIsDetailOpen(true);
   };
 
-  const handleAddPerson = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newPersonData.name.trim()) return;
+  const handleSavePerson = async (data: { name: string; email?: string; phone?: string }) => {
+    if (editingPerson) {
+      await updatePerson(editingPerson.id, data);
+    } else {
+      await createPerson({ ...data, isActive: true });
+    }
+  };
 
-    await createPerson({
-      name: newPersonData.name.trim(),
-      email: newPersonData.email.trim() || undefined,
-      phone: newPersonData.phone.trim() || undefined,
-      isActive: true,
-    });
+  const handleDeactivatePerson = async () => {
+    if (!editingPerson) return;
+    await updatePerson(editingPerson.id, { isActive: false });
+  };
 
-    setNewPersonData({ name: '', email: '', phone: '' });
+  const closePersonForm = () => {
     setIsAddPersonOpen(false);
+    setEditingPerson(null);
   };
 
   return (
@@ -116,6 +114,16 @@ export function PersonView() {
 
               {isExpanded && (
                 <div className="p-4 bg-gray-50 border-t space-y-3">
+                  <div className="flex justify-end">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setEditingPerson(person)}
+                    >
+                      <Pencil size={14} className="mr-2" />
+                      Upravit osobu
+                    </Button>
+                  </div>
                   {personTasks.length > 0 ? (
                     personTasks.map((task) => (
                       <TaskCard key={task.id} task={task} onClick={() => handleTaskClick(task)} />
@@ -136,48 +144,13 @@ export function PersonView() {
         )}
       </div>
 
-      <Modal
-        isOpen={isAddPersonOpen}
-        onClose={() => setIsAddPersonOpen(false)}
-        title="Přidat osobu"
-        size="md"
-      >
-        <form onSubmit={handleAddPerson} className="space-y-4">
-          <Input
-            label="Jméno"
-            required
-            value={newPersonData.name}
-            onChange={(e) => setNewPersonData({ ...newPersonData, name: e.target.value })}
-            placeholder="Zadejte jméno"
-            autoFocus
-          />
-
-          <Input
-            type="email"
-            label="Email"
-            value={newPersonData.email}
-            onChange={(e) => setNewPersonData({ ...newPersonData, email: e.target.value })}
-            placeholder="email@example.com"
-          />
-
-          <Input
-            type="tel"
-            label="Telefon"
-            value={newPersonData.phone}
-            onChange={(e) => setNewPersonData({ ...newPersonData, phone: e.target.value })}
-            placeholder="+420 123 456 789"
-          />
-
-          <div className="flex justify-end gap-3 pt-4">
-            <Button type="button" variant="ghost" onClick={() => setIsAddPersonOpen(false)}>
-              Zrušit
-            </Button>
-            <Button type="submit" variant="primary">
-              Přidat
-            </Button>
-          </div>
-        </form>
-      </Modal>
+      <PersonForm
+        isOpen={isAddPersonOpen || !!editingPerson}
+        onClose={closePersonForm}
+        onSave={handleSavePerson}
+        onArchive={editingPerson ? handleDeactivatePerson : undefined}
+        person={editingPerson}
+      />
 
       <TaskDetail
         task={currentTask}
